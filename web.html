@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chatbot — Trường Cao đẳng Miền Đông</title>
+  <style>
+    :root {
+      --green: #15a54a;
+      --light: #f3f7f6;
+      --card: #ffffff;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--light);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background: var(--green);
+      color: #fff;
+      padding: 10px 15px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    #chat-box {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      background: #e7f5ec;
+    }
+    .message {
+      max-width: 75%;
+      margin: 8px 0;
+      padding: 10px 14px;
+      border-radius: 15px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+    .message.user {
+      background: var(--green);
+      color: #fff;
+      margin-left: auto;
+      border-bottom-right-radius: 5px;
+    }
+    .message.bot {
+      background: var(--card);
+      color: #333;
+      margin-right: auto;
+      border-bottom-left-radius: 5px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .typing {
+      display: inline-block;
+      width: 30px;
+      text-align: center;
+    }
+    .typing span {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin: 0 1px;
+      background: #999;
+      border-radius: 50%;
+      opacity: 0.4;
+      animation: blink 1.4s infinite;
+    }
+    .typing span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    .typing span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+    @keyframes blink {
+      0% { opacity: 0.2; }
+      20% { opacity: 1; }
+      100% { opacity: 0.2; }
+    }
+    #input-area {
+      display: flex;
+      border-top: 1px solid #ddd;
+      background: #fff;
+      padding: 10px;
+    }
+    #user-input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      outline: none;
+      font-size: 14px;
+    }
+    #send-button {
+      background: var(--green);
+      border: none;
+      color: #fff;
+      padding: 0 20px;
+      margin-left: 10px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: 0.2s;
+    }
+    #send-button:hover {
+      background: #0e7c37;
+    }
+  </style>
+</head>
+<body>
+  <header>💬 Chatbot — Trường Cao đẳng Miền Đông</header>
+  <div id="chat-box"></div>
+  <div id="input-area">
+    <input id="user-input" type="text" placeholder="Nhập tin nhắn..." />
+    <button id="send-button">Gửi</button>
+  </div>
+
+  <script>
+    async function sendToWebhook(userMessage) {
+      // Hiện typing indicator
+      const typingDiv = showTyping();
+
+      try {
+        const response = await fetch("https://vothihieu.app.n8n.cloud/webhook-test/5972c4f2-39ae-44e8-b267-355c8d9f3329", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ message: userMessage })
+        });
+
+        const data = await response.json();
+
+        // Xóa typing indicator
+        typingDiv.remove();
+
+        if (typeof data === "string") {
+          appendMessage(data, "bot");
+        } else {
+          const possibleKeys = ["output", "reply", "message", "text"];
+          let reply = null;
+          for (let key of possibleKeys) {
+            if (data[key]) {
+              reply = data[key];
+              break;
+            }
+          }
+          appendMessage(reply ? String(reply) : "Bot chưa có phản hồi.", "bot");
+        }
+      } catch (err) {
+        typingDiv.remove();
+        console.error("Lỗi gọi webhook:", err);
+        appendMessage("Xin lỗi, không kết nối được server.", "bot");
+      }
+    }
+
+    function appendMessage(text, sender) {
+      const chatBox = document.getElementById("chat-box");
+      const messageDiv = document.createElement("div");
+      messageDiv.className = `message ${sender}`;
+      messageDiv.innerText = text;
+      chatBox.appendChild(messageDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function showTyping() {
+      const chatBox = document.getElementById("chat-box");
+      const typingDiv = document.createElement("div");
+      typingDiv.className = "message bot";
+      typingDiv.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+      chatBox.appendChild(typingDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      return typingDiv;
+    }
+
+    document.getElementById("send-button").addEventListener("click", () => {
+      const input = document.getElementById("user-input");
+      const text = input.value.trim();
+      if (text) {
+        appendMessage(text, "user");
+        sendToWebhook(text);
+        input.value = "";
+      }
+    });
+
+    document.getElementById("user-input").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        document.getElementById("send-button").click();
+      }
+    });
+  </script>
+</body>
+</html>
